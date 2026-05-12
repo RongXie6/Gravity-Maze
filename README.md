@@ -1,9 +1,5 @@
 # Gravity Maze
 
-**Developer:** Xie Rongfeng
-
----
-
 ## Project Description
 
 Gravity Maze is a mobile game developed with Flutter in which the player controls a ball through a maze and tries to reach the goal while avoiding obstacles.
