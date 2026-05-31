@@ -1,4 +1,4 @@
-# acceMaze
+# AcceMaze
 
 **Android Project — Accelerometer-Controlled Maze Game**  
 
@@ -6,7 +6,7 @@
 
 ## Overview
 
-**acceMaze** is a mobile maze game where the player guides a steel ball from the top-left corner to the goal in the bottom-right corner of a procedurally generated maze. Along the way, stars can be collected while avoiding obstacles such as holes, special surfaces, and portals.
+**AcceMaze** is a mobile maze game where the player guides a steel ball from the top-left corner to the goal in the bottom-right corner of a procedurally generated maze. Along the way, stars can be collected while avoiding obstacles such as holes, special surfaces, and portals.
 
 The game features local user authentication with separate profiles, 10 levels of increasing difficulty, two control modes, and a context-aware audio system.
 
