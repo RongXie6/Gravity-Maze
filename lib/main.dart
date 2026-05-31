@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'service/audio_service.dart';
 import 'service/auth_service.dart';
 import 'view/auth_view.dart';
 import 'view/level_select_view.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AudioService.instance.init();
 
   // Blocca orientamento solo verticale
   await SystemChrome.setPreferredOrientations([

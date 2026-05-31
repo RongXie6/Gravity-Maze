@@ -7,7 +7,9 @@ import 'package:flutter/services.dart';
 import '../controller/game_controller.dart';
 import '../model/game_model.dart';
 import '../model/level_data.dart';
+import '../service/audio_service.dart';
 import '../service/auth_service.dart';
+import 'audio_settings_dialog.dart';
 
 class MazeView extends StatefulWidget {
   final GameController controller;
@@ -47,9 +49,32 @@ class _MazeViewState extends State<MazeView> with TickerProviderStateMixin {
     )..repeat();
 
     widget.controller.addListener(_onControllerChanged);
+    widget.controller.onStarCollected = () {
+      HapticFeedback.lightImpact();
+      AudioService.instance.playStar();
+    };
+    widget.controller.onHoleDeath = () {
+      AudioService.instance.playDeath();
+    };
     widget.controller.onPortalEnter = () {
       HapticFeedback.mediumImpact();
+      AudioService.instance.playPortal();
     };
+    widget.controller.onSurfaceChanged = (surface) {
+      switch (surface) {
+        case SurfaceType.normal:
+          AudioService.instance.playWood();
+          break;
+        case SurfaceType.ice:
+          AudioService.instance.playIce();
+          break;
+        case SurfaceType.mud:
+          AudioService.instance.playMud();
+          break;
+      }
+    };
+    AudioService.instance.playWood(); // superficie iniziale sempre legno
+    AudioService.instance.playBgm('audio/bgm.wav');
     widget.controller.start();
   }
 
@@ -67,12 +92,12 @@ class _MazeViewState extends State<MazeView> with TickerProviderStateMixin {
     HapticFeedback.heavyImpact();
     _winCtrl.forward(from: 0);
     _spawnParticles();
+    AudioService.instance.playWin();
 
     final stars = widget.controller.currentStars;
     final levelNum = widget.controller.level.number;
     AuthService.updateStats(
       username: widget.user.username,
-      addStars: stars,
       completedGame: true,
       newAchievement: stars == 3 ? 'Livello $levelNum: tre stelle!' : null,
     );
@@ -110,6 +135,7 @@ class _MazeViewState extends State<MazeView> with TickerProviderStateMixin {
   void dispose() {
     widget.controller.removeListener(_onControllerChanged);
     widget.controller.disposeController();
+    AudioService.instance.stopBgm();
     _boardEntryCtrl.dispose();
     _winCtrl.dispose();
     _deadCtrl.dispose();
@@ -129,6 +155,7 @@ class _MazeViewState extends State<MazeView> with TickerProviderStateMixin {
             HapticFeedback.mediumImpact();
             if (widget.controller.model.isWin) {
               widget.controller.nextLevel();
+              AudioService.instance.playBgm('audio/bgm.wav');
             } else {
               widget.controller.resetGame();
               _deadCtrl.reset();
@@ -245,6 +272,13 @@ class _MazeViewState extends State<MazeView> with TickerProviderStateMixin {
                             ),
                           ),
                         ),
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: SafeArea(
+                            child: const _AudioToggleButton(),
+                          ),
+                        ),
                       ],
                     );
                   },
@@ -267,6 +301,39 @@ class _MazeViewState extends State<MazeView> with TickerProviderStateMixin {
           ),
         );
       },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────
+// Pulsante audio (musica + sfx)
+// ─────────────────────────────────────────────────
+class _AudioToggleButton extends StatefulWidget {
+  const _AudioToggleButton();
+
+  @override
+  State<_AudioToggleButton> createState() => _AudioToggleButtonState();
+}
+
+class _AudioToggleButtonState extends State<_AudioToggleButton> {
+  void _showAudioDialog() {
+    showAudioSettingsDialog(
+      context,
+      onChanged: () { if (mounted) setState(() {}); },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final allOn =
+        AudioService.instance.musicEnabled && AudioService.instance.sfxEnabled;
+    return IconButton(
+      onPressed: _showAudioDialog,
+      icon: Icon(allOn ? Icons.volume_up_rounded : Icons.volume_off_rounded),
+      color: Colors.white,
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.black.withOpacity(0.4),
+      ),
     );
   }
 }

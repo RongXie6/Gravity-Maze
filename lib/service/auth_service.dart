@@ -179,7 +179,6 @@ class AuthService {
   /// Aggiorna le statistiche del giocatore
   static Future<void> updateStats({
     required String username,
-    int addStars = 0,
     int addPlaySeconds = 0,
     bool completedGame = false,
     String? newAchievement,
@@ -198,7 +197,6 @@ class AuthService {
       Map<String, dynamic>.from(users[username]),
     );
 
-    profile.totalStars += addStars;
     profile.totalPlayTimeSeconds += addPlaySeconds;
 
     if (completedGame) {

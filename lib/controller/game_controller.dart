@@ -13,7 +13,8 @@ import 'ball_physics.dart';
 /// Controller del gioco — gestisce input, livelli, timer, fisica e statistiche.
 class GameController extends ChangeNotifier {
   final GameModel model;
-  GameController(this.model);
+  final String username;
+  GameController(this.model, {this.username = 'guest'});
 
   StreamSubscription? _accSub;
   Timer? _timer;
@@ -46,9 +47,12 @@ class GameController extends ChangeNotifier {
 
   // Callback per notificare eventi al layer UI
   VoidCallback? onStarCollected;
-  VoidCallback? onHoleFall;
+  VoidCallback? onHoleDeath;
   VoidCallback? onPortalEnter;
   void Function(double dir)? onBoardRotate;
+  void Function(SurfaceType)? onSurfaceChanged;
+
+  SurfaceType _lastSurface = SurfaceType.normal;
 
   LevelData get level => levels[model.levelIndex];
 
@@ -151,6 +155,7 @@ class GameController extends ChangeNotifier {
     _sessionSeconds = 0.0;
     _currentFriction = _baseFriction;
 
+    _lastSurface = SurfaceType.normal;
     model.timeLeft = level.hasTimer ? level.timeLimit : 0;
     model.makeMaze();
 
@@ -176,7 +181,7 @@ class GameController extends ChangeNotifier {
 
     model.wallRects = _buildWalls();
     _applyLevelSurfaces();
-    _applyLevelPortals();  // 先建传送门，_placeItems 才能避开
+    _applyLevelPortals();  // portali prima di _placeItems per evitare sovrapposizioni
     _placeItems();
   }
 
@@ -201,7 +206,8 @@ class GameController extends ChangeNotifier {
   }
 
   void _updateSurfaceFriction() {
-    switch (_surfaceUnderBall()) {
+    final surface = _surfaceUnderBall();
+    switch (surface) {
       case SurfaceType.ice:
         _currentFriction = _iceFriction;
         break;
@@ -211,6 +217,10 @@ class GameController extends ChangeNotifier {
       case SurfaceType.normal:
         _currentFriction = _normalFriction;
         break;
+    }
+    if (surface != _lastSurface) {
+      _lastSurface = surface;
+      onSurfaceChanged?.call(surface);
     }
   }
 
@@ -467,7 +477,7 @@ class GameController extends ChangeNotifier {
     for (final h in model.holes) {
       if ((h - model.ballPos).distance <= r * 0.95) {
         model.isDead = true;
-        onHoleFall?.call();
+        onHoleDeath?.call();
         return;
       }
     }
@@ -490,7 +500,7 @@ class GameController extends ChangeNotifier {
 
   Future<void> _saveBestStars() async {
     final prefs = await SharedPreferences.getInstance();
-    final key = 'level_${level.number}_stars';
+    final key = '${username}_level_${level.number}_stars';
     final oldStars = prefs.getInt(key) ?? 0;
     if (currentStars > oldStars) {
       await prefs.setInt(key, currentStars);

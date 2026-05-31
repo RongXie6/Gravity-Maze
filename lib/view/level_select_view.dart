@@ -5,7 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../controller/game_controller.dart';
 import '../model/game_model.dart';
 import '../model/level_data.dart';
+import '../service/audio_service.dart';
 import '../service/auth_service.dart';
+import 'audio_settings_dialog.dart';
 import 'auth_view.dart';
 import 'maze_view.dart';
 
@@ -33,11 +35,13 @@ class _LevelSelectViewState extends State<LevelSelectView>
       duration: const Duration(milliseconds: 1000),
     )..forward();
     _loadStars();
+    AudioService.instance.playBgm('audio/menu.wav');
   }
 
   @override
   void dispose() {
     _staggerCtrl.dispose();
+    AudioService.instance.stopBgm();
     super.dispose();
   }
 
@@ -45,12 +49,14 @@ class _LevelSelectViewState extends State<LevelSelectView>
     final prefs = await SharedPreferences.getInstance();
     final map = <int, int>{};
     for (final lv in levels) {
-      map[lv.number] = prefs.getInt('level_${lv.number}_stars') ?? 0;
+      map[lv.number] = prefs.getInt('${_user.username}_level_${lv.number}_stars') ?? 0;
     }
     if (!mounted) return;
-    setState(() => _savedStars = map);
     final total = map.values.fold(0, (a, b) => a + b);
-    setState(() => _user.totalStars = total);
+    setState(() {
+      _savedStars = map;
+      _user.totalStars = total;
+    });
   }
 
   String _starsText(int count) =>
@@ -71,7 +77,7 @@ class _LevelSelectViewState extends State<LevelSelectView>
 
     HapticFeedback.lightImpact();
     final model = GameModel(cols: 5, rows: 7);
-    final controller = GameController(model);
+    final controller = GameController(model, username: _user.username);
     controller.setLevel(level.number - 1);
 
     await Navigator.of(context).push(
@@ -87,6 +93,7 @@ class _LevelSelectViewState extends State<LevelSelectView>
       ),
     );
 
+    AudioService.instance.playBgm('audio/menu.wav');
     await _loadStars();
   }
 
@@ -114,6 +121,18 @@ class _LevelSelectViewState extends State<LevelSelectView>
           )
         ],
       ),
+    );
+  }
+
+  Future<void> _loginFromGuest() async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final lv in levels) {
+      await prefs.remove('Ospite_level_${lv.number}_stars');
+    }
+    if (!mounted) return;
+    AudioService.instance.stopBgm();
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const AuthView()),
     );
   }
 
@@ -181,7 +200,14 @@ class _LevelSelectViewState extends State<LevelSelectView>
         centerTitle: true,
       ),
       actions: [
-        if (_user.username != 'Ospite')
+        _AudioMenuButton(onChanged: () => setState(() {})),
+        if (_user.username == 'Ospite')
+          IconButton(
+            icon: const Icon(Icons.login_rounded, color: Colors.white),
+            onPressed: _loginFromGuest,
+            tooltip: 'Accedi o registrati',
+          )
+        else
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: Colors.white),
             onPressed: _logout,
@@ -363,6 +389,30 @@ class _LevelSelectViewState extends State<LevelSelectView>
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────
+// Pulsante audio nel menu
+// ─────────────────────────────────────────────────
+class _AudioMenuButton extends StatelessWidget {
+  final VoidCallback onChanged;
+  const _AudioMenuButton({required this.onChanged});
+
+  void _show(BuildContext context) {
+    showAudioSettingsDialog(context, onChanged: onChanged);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final allOn =
+        AudioService.instance.musicEnabled && AudioService.instance.sfxEnabled;
+    return IconButton(
+      icon: Icon(allOn ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+          color: Colors.white),
+      onPressed: () => _show(context),
+      tooltip: 'Impostazioni audio',
     );
   }
 }
